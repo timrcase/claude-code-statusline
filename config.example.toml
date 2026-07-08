@@ -1,0 +1,74 @@
+# claude-code-statusline configuration
+#
+# Copy to: $XDG_CONFIG_HOME/claude-code-statusline/config.toml
+#      or: ~/.config/claude-code-statusline/config.toml
+#
+# Every value below matches the built-in defaults — deleting this file (or any
+# part of it) changes nothing.
+#
+# A segment renders only if it appears in a [layout] line; the sections below
+# just configure how each segment looks. Colors are hex, no leading '#';
+# output is truecolor ANSI.
+
+[layout]
+separator = " | "        # rendered dim between segments
+line1 = ["model", "directory", "context", "effort", "limit_5h", "limit_7d"]
+# line2 = ["custom.example"]   # add lineN keys for a multi-line statusline
+
+[model]
+color = "0099ff"
+
+[directory]
+git = true               # branch after dir as @branch
+diff = true              # (+adds -dels) from git diff --numstat; set false in huge repos
+worktree = true          # [name] when in a linked git worktree
+color          = "2e9599"
+branch_color   = "00a000"
+worktree_color = "ffb055"
+adds_color     = "00a000"
+dels_color     = "ff5555"
+
+[context]
+bar = "blocks"           # blocks | dots | none
+width = 5                # cells per bar
+counts = true            # "112k/200k"
+percent = true           # "(56%)"
+counts_color   = "ffb055"
+ok_color       = "00a000"   # usage < 50% (bar fill + percent)
+warn_color     = "e6c800"   # >= 50%
+hot_color      = "ffb055"   # >= 70%
+critical_color = "ff5555"   # >= 90%
+
+[effort]
+label_color  = "dcdcdc"  # the "effort:" prefix
+medium_color = "ffb055"
+high_color   = "00a000"
+xhigh_color  = "a78bfa"
+max_color    = "ff5555"  # ("low" always renders dim)
+
+[limit_5h]
+bar = "blocks"
+width = 5
+reset = true             # "@13:00" (local time), rendered dim
+label_color    = "dcdcdc"
+ok_color       = "00a000"
+warn_color     = "e6c800"
+hot_color      = "ffb055"
+critical_color = "ff5555"
+
+[limit_7d]
+bar = "blocks"
+width = 5
+reset = true             # "@Mon Jul 6, 13:00"
+label_color    = "dcdcdc"
+ok_color       = "00a000"
+warn_color     = "e6c800"
+hot_color      = "ffb055"
+critical_color = "ff5555"
+
+# Escape hatch — named custom segments splice the first line of a command's
+# stdout into the line (ANSI colors pass through). Reference in a layout line
+# as "custom.example". Killed and skipped if it exceeds timeout_ms.
+# [custom.example]
+# command = "my-script"
+# timeout_ms = 300
