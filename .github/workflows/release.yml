@@ -81,10 +81,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet; then
+          git add Formula/claude-code-statusline.rb
+          # --cached so a brand-new (untracked) formula still counts as a change;
+          # plain `git diff` ignores untracked files and would skip the push.
+          if git diff --cached --quiet; then
             echo "Formula unchanged; nothing to commit."
             exit 0
           fi
-          git add Formula/claude-code-statusline.rb
           git commit -m "claude-code-statusline ${{ github.ref_name }}"
           git push
