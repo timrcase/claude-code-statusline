@@ -43,3 +43,48 @@ jobs:
             dist/*.tar.gz dist/checksums.txt \
             --title "${{ github.ref_name }}" \
             --generate-notes
+
+  # Render the Homebrew formula from this release's checksums and push it to
+  # the timrcase/homebrew-tap repo, so `brew install timrcase/tap/...` tracks
+  # every tagged release. Requires a HOMEBREW_TAP_TOKEN secret (a PAT or
+  # fine-grained token with contents:write on homebrew-tap); the default
+  # GITHUB_TOKEN cannot push to another repo.
+  homebrew:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      - name: Checkout tap repo
+        uses: actions/checkout@v4
+        with:
+          repository: timrcase/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Render formula
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ github.ref_name }}"
+          version="${version#v}"
+          gh release download "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --pattern checksums.txt --dir . --clobber
+          mkdir -p tap/Formula
+          scripts/render-formula.sh "$version" checksums.txt \
+            > tap/Formula/claude-code-statusline.rb
+
+      - name: Commit and push to tap
+        working-directory: tap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "Formula unchanged; nothing to commit."
+            exit 0
+          fi
+          git add Formula/claude-code-statusline.rb
+          git commit -m "claude-code-statusline ${{ github.ref_name }}"
+          git push

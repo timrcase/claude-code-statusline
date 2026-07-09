@@ -19,6 +19,12 @@ segment](#custom-segments) you opt into.
 
 ## Install
 
+### Homebrew
+
+```sh
+brew install timrcase/tap/claude-code-statusline
+```
+
 ### From source
 
 ```sh
