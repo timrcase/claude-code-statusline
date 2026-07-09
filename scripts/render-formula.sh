@@ -64,6 +64,19 @@ class ClaudeCodeStatusline < Formula
     bin.install "${bin}"
   end
 
+  def caveats
+    <<~EOS
+      To enable the statusline in Claude Code, add this to ~/.claude/settings.json:
+
+          "statusLine": {
+            "type": "command",
+            "command": "#{HOMEBREW_PREFIX}/bin/${bin}"
+          }
+
+      Then restart Claude Code (or start a new session).
+    EOS
+  end
+
   test do
     # Empty stdin prints "Claude" (see main.go).
     assert_equal "Claude", shell_output("#{bin}/${bin} < /dev/null").strip
