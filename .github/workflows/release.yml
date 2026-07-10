@@ -90,3 +90,36 @@ jobs:
           fi
           git commit -m "claude-code-statusline ${{ github.ref_name }}"
           git push
+
+  # Bump the plugin manifest's version to this release on the default branch.
+  # The plugin is served from `master` (that's what `claude plugin marketplace
+  # add` clones), and its SessionStart sync hook downloads the release matching
+  # plugin.json's version — so this keeps the Claude Code plugin tracking every
+  # tagged release without a manual bump. The tag's own commit is irrelevant to
+  # plugin resolution; only the default branch's manifest is.
+  plugin-version:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout default branch
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Bump plugin.json version and push
+        run: |
+          version="${{ github.ref_name }}"
+          version="${version#v}"
+          manifest="plugin/.claude-plugin/plugin.json"
+          tmp="$(mktemp)"
+          jq --arg v "$version" '.version = $v' "$manifest" > "$tmp"
+          mv "$tmp" "$manifest"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$manifest"
+          if git diff --cached --quiet; then
+            echo "plugin.json already at $version; nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: bump plugin version to $version"
+          git push

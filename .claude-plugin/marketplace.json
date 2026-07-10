@@ -1,0 +1,14 @@
+{
+  "name": "claude-code-statusline",
+  "owner": {
+    "name": "Tim Case",
+    "url": "https://github.com/timrcase"
+  },
+  "plugins": [
+    {
+      "name": "claude-code-statusline",
+      "source": "./plugin",
+      "description": "Fast, config-driven statusline for Claude Code. Installs the native Go binary from GitHub releases and wires up the statusLine setting; auto-updates on plugin version bumps."
+    }
+  ]
+}
