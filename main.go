@@ -15,23 +15,55 @@ import (
 // It stays "dev" for plain `go build` / `go run`.
 var version = "dev"
 
+const usage = `claude-code-statusline — a statusline for Claude Code.
+
+Reads one Claude Code JSON payload on stdin and prints an ANSI-colored
+statusline on stdout. Claude Code normally invokes it for you via the
+statusLine setting, with no arguments.
+
+Usage:
+  claude-code-statusline            read a JSON payload from stdin, print the statusline
+  claude-code-statusline --version  print the version and exit
+  claude-code-statusline --help     show this help and exit
+
+Config: $XDG_CONFIG_HOME/claude-code-statusline/config.toml
+    (falls back to ~/.config/claude-code-statusline/config.toml)
+`
+
 func main() {
-	if len(os.Args) > 1 {
-		switch os.Args[1] {
+	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+}
+
+// run is the testable entry point: it parses args and renders, returning the
+// process exit code. Any argument means a manual invocation — only the known
+// flags are accepted, and an unknown one errors out instead of falling through
+// to a stdin read that would block forever on a terminal.
+func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	if len(args) > 0 {
+		switch args[0] {
 		case "--version", "-v", "version":
-			fmt.Println(version)
-			return
+			fmt.Fprintln(stdout, version)
+			return 0
+		case "--help", "-h", "help":
+			fmt.Fprint(stdout, usage)
+			return 0
+		default:
+			fmt.Fprintf(stderr, "claude-code-statusline: unknown option %q\n\n", args[0])
+			fmt.Fprint(stderr, usage)
+			return 2
 		}
 	}
-	input, _ := io.ReadAll(os.Stdin)
+
+	input, _ := io.ReadAll(stdin)
 	if strings.TrimSpace(string(input)) == "" {
-		fmt.Println("Claude")
-		return
+		fmt.Fprintln(stdout, "Claude")
+		return 0
 	}
 	var payload Payload
 	if err := json.Unmarshal(input, &payload); err != nil {
 		payload = Payload{}
 	}
 	cfg := loadConfig()
-	fmt.Println(render(&payload, &cfg))
+	fmt.Fprintln(stdout, render(&payload, &cfg))
+	return 0
 }
