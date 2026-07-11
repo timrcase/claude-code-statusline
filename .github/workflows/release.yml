@@ -20,6 +20,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Set up just
+        uses: extractions/setup-just@v2
+
       - name: Test
         run: go test ./...
 
@@ -27,15 +30,15 @@ jobs:
         run: go vet ./...
 
       # Pure Go, no cgo, so darwin+linux/amd64+arm64 all cross-compile from
-      # this one Linux runner — see scripts/build-release.sh.
+      # this one Linux runner — see the build-all recipe in the justfile.
       - name: Build release binaries
         env:
           VERSION: ${{ github.ref_name }}
-        run: scripts/build-release.sh
+        run: just build-all
 
       - name: Generate checksums
         working-directory: dist
-        run: sha256sum *.tar.gz > checksums.txt
+        run: sha256sum -- *.tar.gz > checksums.txt
 
       - name: Create GitHub release
         env:
@@ -65,6 +68,9 @@ jobs:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: tap
 
+      - name: Set up just
+        uses: extractions/setup-just@v2
+
       - name: Render formula
         env:
           GH_TOKEN: ${{ github.token }}
@@ -75,7 +81,7 @@ jobs:
             --repo "${{ github.repository }}" \
             --pattern checksums.txt --dir . --clobber
           mkdir -p tap/Formula
-          scripts/render-formula.sh "$version" checksums.txt \
+          just render-formula "$version" checksums.txt \
             > tap/Formula/claude-code-statusline.rb
 
       - name: Commit and push to tap

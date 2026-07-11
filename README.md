@@ -177,7 +177,7 @@ timeout_ms = 300
 ## Building releases
 
 ```sh
-scripts/build-release.sh
+just build-all
 ```
 
 Cross-compiles `darwin/arm64`, `darwin/amd64`, `linux/amd64`, and
@@ -185,10 +185,18 @@ Cross-compiles `darwin/arm64`, `darwin/amd64`, `linux/amd64`, and
 
 ## Development
 
+Tasks live in the [`justfile`](justfile) (`just --list` to see them); they need
+[`just`](https://github.com/casey/just), plus `go`, `git`, and `jq`.
+
 ```sh
-go test ./...                                     # unit + fixture + git integration tests
-go run . < testdata/payload.json                  # manual render
+just check                                        # go test ./... + go vet ./...
+just run                                          # build, then render testdata/payload.json
+just run testdata/minimal.json                    # render a specific payload
+just release 1.5.0                                # bump plugin.json, tag, push
 ```
+
+The GitHub release workflow uses the same recipes (`just build-all`,
+`just render-formula`), so there is one source of truth for build/release logic.
 
 Test fixtures in `testdata/`: `payload.json` (real captured payload),
 `legacy.json` (no rate_limits/effort), `minimal.json` (model only). To capture a fresh payload,
