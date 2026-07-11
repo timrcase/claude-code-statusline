@@ -29,6 +29,8 @@ jobs:
       # Pure Go, no cgo, so darwin+linux/amd64+arm64 all cross-compile from
       # this one Linux runner — see scripts/build-release.sh.
       - name: Build release binaries
+        env:
+          VERSION: ${{ github.ref_name }}
         run: scripts/build-release.sh
 
       - name: Generate checksums
