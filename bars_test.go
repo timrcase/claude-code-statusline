@@ -66,6 +66,33 @@ func TestDotsFillMath(t *testing.T) {
 	}
 }
 
+func TestPieQuarters(t *testing.T) {
+	cases := []struct {
+		pct  float64
+		want string
+	}{
+		{0, "○"},
+		{12, "○"}, // 0.48 -> 0
+		{13, "◔"}, // 0.52 -> 1
+		{25, "◔"},
+		{37, "◔"}, // 37/25 = 1.48 -> 1
+		{38, "◑"}, // 1.52 -> 2
+		{50, "◑"},
+		{62, "◑"}, // 2.48 -> 2
+		{63, "◕"}, // 2.52 -> 3
+		{75, "◕"},
+		{88, "●"}, // 3.52 -> 4
+		{100, "●"},
+		{250, "●"}, // clamped
+		{-5, "○"},  // clamped
+	}
+	for _, c := range cases {
+		if got := stripANSI(pie(c.pct, "00a000")); got != c.want {
+			t.Errorf("pie(%v) = %q, want %q", c.pct, got, c.want)
+		}
+	}
+}
+
 func TestNoneStyleHasNoBar(t *testing.T) {
 	if _, ok := bar(BarNone, 56.0, 5, "00a000"); ok {
 		t.Error("bar(none) should report no bar")

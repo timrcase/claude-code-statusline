@@ -12,9 +12,10 @@ It reads the JSON payload Claude Code pipes to the statusline command on
 stdin, renders truecolor ANSI to stdout, and exits.
 
 **Pure stdin → stdout, by design.** No network calls, no OAuth/credential
-reading, no caches. The 5h/7d rate-limit display comes straight from the
-`rate_limits` data Claude Code provides on stdin. The only subprocesses are
-`git` (branch, diff stats, worktree name) and any [custom
+reading. The 5h/7d rate-limit display comes straight from the `rate_limits`
+data Claude Code provides on stdin. The only disk write is a local copy of the
+last payload for [`--print-payload`](#discovering-fields); the only subprocesses
+are `git` (branch, diff stats, worktree name) and any [custom
 segment](#custom-segments) you opt into.
 
 ## Install
@@ -165,6 +166,76 @@ line2 = ["custom.usage"]
 command = "my-usage-fetcher"   # run via `sh -c`
 timeout_ms = 300
 ```
+
+### Field segments
+
+The built-in segments cover the common cases, but Claude Code's stdin payload
+carries much more — `cost.*`, `pr.*`, `vim.mode`, `agent.name`, `workspace.repo.*`,
+and [more](https://code.claude.com/docs/en/statusline#available-data), with new
+fields added over time. A **field segment** surfaces *any* of them by JSON path,
+no per-field code required. Declare `[field.<name>]` and reference it in the
+layout as `"field.<name>"`.
+
+```toml
+[layout]
+line1 = ["model", "directory", "field.cost", "field.rl5h"]
+
+[field.cost]
+path   = "cost.total_cost_usd"   # dotted path into the stdin JSON (required)
+symbol = "$"                     # any string: $, a Nerd Font glyph, or an emoji
+format = "usd"                   # optional; see below
+color  = "00a000"                # optional; hex. An explicit color always wins.
+
+[field.rl5h]
+path    = "rate_limits.five_hour.used_percentage"
+format  = "pie"                  # compact one-glyph gauge
+percent = true                   # also append "39%"
+```
+
+`format` options:
+
+| format | example | notes |
+| --- | --- | --- |
+| *(unset)* | `NORMAL`, `156` | raw value; whole numbers as ints |
+| `usd` | `0.06` | 2 decimals (`symbol` supplies the `$`) |
+| `tokens` | `15k` | same scaling as the context counts |
+| `duration` | `1m30s` | from a millisecond count |
+| `percent` | `24%` | rounds to a whole number |
+| `epoch` | `Jul 6 13:00` | Unix seconds → local time |
+| `bar` / `dots` / `pie` | `██▎░░` · `●●○○○` · `◑` | gauges for a 0–100 number |
+
+Notes:
+
+- A missing path, `null`, or a **false boolean** renders nothing (no stray
+  symbol). Booleans (`thinking.enabled`, `exceeds_200k_tokens`) show `symbol`
+  only when true — a flag.
+- `bar`/`dots`/`pie` color by the usage gradient (like the context bar) unless
+  you set `color`; `width` sets bar/dots cells (default 5); `pie` needs no font
+  beyond standard Unicode geometric shapes.
+
+Don't know the exact path for a field? See [Discovering fields](#discovering-fields).
+
+## Discovering fields
+
+Run:
+
+```sh
+claude-code-statusline --print-payload
+```
+
+Every render caches the raw stdin JSON to
+`${XDG_STATE_HOME:-~/.local/state}/claude-code-statusline/last-payload.json`, and
+`--print-payload` pretty-prints the last one (with its capture time), so you can
+copy exact paths into `[field.*]` sections. Because the payload only arrives on a
+Claude Code refresh, trigger one first — or pipe a saved copy:
+
+```sh
+claude-code-statusline --print-payload < payload.json
+```
+
+stdout stays valid JSON (the capture note goes to stderr), so you can pipe it to
+`jq`. This is also the quickest way to see why a segment is blank on your setup —
+e.g. Claude Enterprise omits `rate_limits`.
 
 ## Behavior on odd input
 

@@ -31,6 +31,7 @@ type Config struct {
 	Limit5h   LimitCfg
 	Limit7d   LimitCfg
 	Custom    map[string]CustomCfg
+	Fields    map[string]FieldCfg
 }
 
 type Layout struct {
@@ -96,6 +97,22 @@ type CustomCfg struct {
 	TimeoutMs uint64 `toml:"timeout_ms"`
 }
 
+// FieldCfg is a declarative segment reading any dotted path out of the stdin
+// JSON, declared as [field.name] and referenced in layout as "field.name". A
+// scalar format (usd/tokens/duration/percent/epoch or raw) renders text; a viz
+// format (bar/dots/pie) renders a gauge colored by the usage gradient unless an
+// explicit color is set.
+type FieldCfg struct {
+	Path    string `toml:"path"`
+	Symbol  string `toml:"symbol"`
+	Format  string `toml:"format"`
+	Color   string `toml:"color"`
+	Suffix  string `toml:"suffix"`
+	Width   int    `toml:"width"`   // cells for bar/dots
+	Percent bool   `toml:"percent"` // append "NN%" after a viz gauge
+	Thresholds
+}
+
 const defaultTimeoutMs = 300
 
 func defaultThresholds() Thresholds {
@@ -154,6 +171,7 @@ func DefaultConfig() Config {
 		Limit5h: defaultLimit(),
 		Limit7d: defaultLimit(),
 		Custom:  map[string]CustomCfg{},
+		Fields:  map[string]FieldCfg{},
 	}
 }
 
@@ -197,6 +215,7 @@ type fileConfig struct {
 	Limit5h   toml.Primitive            `toml:"limit_5h"`
 	Limit7d   toml.Primitive            `toml:"limit_7d"`
 	Custom    map[string]toml.Primitive `toml:"custom"`
+	Field     map[string]toml.Primitive `toml:"field"`
 }
 
 func parseConfig(raw, origin string) Config {
@@ -226,6 +245,19 @@ func parseConfig(raw, origin string) Config {
 			continue
 		}
 		cfg.Custom[name] = cc
+	}
+
+	for name, prim := range fc.Field {
+		f := FieldCfg{Width: 5, Thresholds: defaultThresholds()}
+		if err := md.PrimitiveDecode(prim, &f); err != nil {
+			warnf("bad [field.%s] in %s: %v; skipping", name, origin, err)
+			continue
+		}
+		if f.Path == "" {
+			warnf("[field.%s] in %s has no path; skipping", name, origin)
+			continue
+		}
+		cfg.Fields[name] = f
 	}
 
 	if md.IsDefined("layout") {
@@ -331,6 +363,24 @@ func (cfg *Config) normalize(origin string) {
 	fixBar("limit_5h", &cfg.Limit5h.Bar)
 	fixBar("limit_7d", &cfg.Limit7d.Bar)
 
+	validFormats := map[string]bool{
+		"": true, "usd": true, "tokens": true, "duration": true,
+		"percent": true, "epoch": true, "bar": true, "dots": true, "pie": true,
+	}
+	for name, f := range cfg.Fields {
+		changed := false
+		if !validFormats[f.Format] {
+			warnf("unknown format %q in [field.%s] of %s; showing raw value", f.Format, name, origin)
+			f.Format, changed = "", true
+		}
+		if f.Width <= 0 {
+			f.Width, changed = 5, true
+		}
+		if changed {
+			cfg.Fields[name] = f
+		}
+	}
+
 	for i, line := range cfg.Layout.Lines {
 		kept := make([]string, 0, len(line))
 		for _, name := range line {
@@ -340,6 +390,12 @@ func (cfg *Config) normalize(origin string) {
 				key := strings.TrimPrefix(name, "custom.")
 				if _, exists := cfg.Custom[key]; !exists {
 					warnf("layout references %q but no [custom.%s] section exists in %s; skipping", name, key, origin)
+					continue
+				}
+			case strings.HasPrefix(name, "field."):
+				key := strings.TrimPrefix(name, "field.")
+				if _, exists := cfg.Fields[key]; !exists {
+					warnf("layout references %q but no [field.%s] section exists in %s; skipping", name, key, origin)
 					continue
 				}
 			default:

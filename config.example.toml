@@ -72,3 +72,32 @@ critical_color = "ff5555"
 # [custom.example]
 # command = "my-script"
 # timeout_ms = 300
+
+# Field segments — expose ANY value from Claude Code's stdin JSON by its dotted
+# path (see `claude-code-statusline --print-payload` to discover paths). Declare
+# [field.<name>] and reference it in a layout line as "field.<name>". A missing
+# path, null, or a false boolean renders nothing.
+#
+#   format options (optional):
+#     (unset)   raw value (strings as-is, whole numbers as ints)
+#     usd       0.0610695 -> 0.06        percent   23.5 -> 24%
+#     tokens    15500 -> 15k             epoch     1783404600 -> local time
+#     duration  45000 (ms) -> 45s
+#     bar       gauge like the context bar   (needs a 0-100 number)
+#     dots      dot gauge                    (needs a 0-100 number)
+#     pie       one glyph ○◔◑◕●             (needs a 0-100 number)
+#
+# Booleans (thinking.enabled, exceeds_200k_tokens) show `symbol` only when true.
+# bar/dots/pie color by the usage gradient unless `color` is set; `percent = true`
+# appends "NN%" after the gauge; `width` sets bar/dots cells (default 5).
+#
+# [field.cost]
+# path   = "cost.total_cost_usd"
+# symbol = "$"
+# format = "usd"
+# color  = "00a000"
+#
+# [field.rl5h]
+# path    = "rate_limits.five_hour.used_percentage"
+# format  = "pie"
+# percent = true

@@ -38,6 +38,21 @@ func TestRunHelp(t *testing.T) {
 		if !strings.Contains(out.String(), "Usage:") {
 			t.Fatalf("%s: help output missing usage", arg)
 		}
+		if !strings.Contains(out.String(), "--print-payload") {
+			t.Fatalf("%s: help should mention --print-payload", arg)
+		}
+	}
+}
+
+func TestRunPrintPayloadPiped(t *testing.T) {
+	var out, errb bytes.Buffer
+	// A non-*os.File reader counts as piped, so this prints the given JSON.
+	code := run([]string{"--print-payload"}, strings.NewReader(`{"x":1}`), &out, &errb)
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(out.String(), "\"x\": 1") {
+		t.Fatalf("expected pretty-printed payload, got %q", out.String())
 	}
 }
 

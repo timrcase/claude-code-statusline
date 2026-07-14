@@ -20,6 +20,11 @@ type Payload struct {
 	Effort        Effort        `json:"effort"`
 	ContextWindow ContextWindow `json:"context_window"`
 	RateLimits    RateLimits    `json:"rate_limits"`
+
+	// raw is the same stdin JSON decoded generically, so [field.*] segments can
+	// resolve arbitrary dotted paths (cost.*, pr.*, …) the typed view omits.
+	// Populated in run(); nil in unit tests that don't exercise field segments.
+	raw map[string]any
 }
 
 type Model struct {

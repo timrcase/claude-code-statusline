@@ -61,6 +61,20 @@ func blocks(pct float64, width int, colorHex string) string {
 	return b.String()
 }
 
+// Quarter-circle pie glyphs, empty → full, for a one-cell compact gauge.
+var pieGlyphs = []rune{'○', '◔', '◑', '◕', '●'}
+
+// pie renders a percentage as a single quarter-resolution pie glyph. It needs
+// no bar width and no Nerd Font — the glyphs are standard geometric shapes.
+func pie(pct float64, colorHex string) string {
+	pct = math.Min(math.Max(pct, 0), 100)
+	i := int(math.Round(pct / 25))
+	if i > 4 {
+		i = 4
+	}
+	return fg(colorHex) + string(pieGlyphs[i]) + reset
+}
+
 func dots(pct float64, width int, colorHex string) string {
 	filled := int(math.Round(pct / 100 * float64(width)))
 	var b strings.Builder

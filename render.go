@@ -47,12 +47,81 @@ func segment(name string, p *Payload, cfg *Config) (string, bool) {
 	case "limit_7d":
 		return limitSeg(&cfg.Limit7d, "7d", p.RateLimits.SevenDay, "Mon Jan 2, 15:04"), true
 	default:
+		if key, ok := strings.CutPrefix(name, "field."); ok {
+			if fc, exists := cfg.Fields[key]; exists {
+				return fieldSeg(&fc, p.raw)
+			}
+			return "", false
+		}
 		key := strings.TrimPrefix(name, "custom.")
 		if cc, ok := cfg.Custom[key]; ok && key != name {
 			return customSeg(cc.Command, cc.TimeoutMs)
 		}
 		return "", false // config normalization already warned
 	}
+}
+
+const fieldDefaultColor = "dcdcdc"
+
+// fieldSeg renders a [field.*] segment from the raw stdin JSON. A missing path,
+// null, wrong type, or a false boolean flag → blank (dropped from the line).
+// An explicit color always wins; otherwise viz formats color by the usage
+// gradient and everything else uses a neutral default.
+func fieldSeg(fc *FieldCfg, raw map[string]any) (string, bool) {
+	v, ok := resolvePath(raw, fc.Path)
+	if !ok {
+		return "", false
+	}
+
+	color := fc.Color
+	if color == "" {
+		color = fieldDefaultColor
+	}
+
+	// Booleans act as flags: the symbol shows only when true.
+	if b, isBool := v.(bool); isBool {
+		if !b || fc.Symbol == "" {
+			return "", false
+		}
+		return paint(color, fc.Symbol+fc.Suffix), true
+	}
+
+	if isVizFormat(fc.Format) {
+		pct, ok := toFloat(v)
+		if !ok {
+			return "", false
+		}
+		if fc.Color == "" {
+			color = usageColor(fc.Thresholds, math.Min(math.Max(pct, 0), 100))
+		}
+		var gauge string
+		switch fc.Format {
+		case "pie":
+			gauge = pie(pct, color)
+		case "dots":
+			gauge, _ = bar(BarDots, pct, fc.Width, color)
+		default: // bar
+			gauge, _ = bar(BarBlocks, pct, fc.Width, color)
+		}
+		var b strings.Builder
+		if fc.Symbol != "" {
+			b.WriteString(paint(color, fc.Symbol))
+		}
+		b.WriteString(gauge)
+		if fc.Percent {
+			b.WriteString(" " + paint(color, strconv.FormatInt(int64(math.Round(pct)), 10)+"%"))
+		}
+		if fc.Suffix != "" {
+			b.WriteString(paint(color, fc.Suffix))
+		}
+		return b.String(), true
+	}
+
+	text, ok := formatScalar(v, fc.Format)
+	if !ok {
+		return "", false
+	}
+	return paint(color, fc.Symbol+text+fc.Suffix), true
 }
 
 func modelSeg(p *Payload, cfg *Config) string {

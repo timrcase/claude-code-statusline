@@ -122,6 +122,62 @@ func TestCustomWithoutCommandIsSkipped(t *testing.T) {
 	}
 }
 
+func TestFieldSectionParsesWithDefaults(t *testing.T) {
+	raw := `
+[layout]
+line1 = ["field.cost"]
+
+[field.cost]
+path = "cost.total_cost_usd"
+symbol = "$"
+format = "usd"
+`
+	c := parseConfig(raw, "test")
+	f, ok := c.Fields["cost"]
+	if !ok {
+		t.Fatal("field.cost not parsed")
+	}
+	if f.Path != "cost.total_cost_usd" || f.Symbol != "$" || f.Format != "usd" {
+		t.Errorf("field.cost = %+v", f)
+	}
+	if f.Width != 5 {
+		t.Errorf("width should default to 5, got %d", f.Width)
+	}
+	if f.OkColor != "00a000" {
+		t.Errorf("thresholds should default, got %+v", f.Thresholds)
+	}
+	if !reflect.DeepEqual(c.Layout.Lines, [][]string{{"field.cost"}}) {
+		t.Errorf("lines = %v", c.Layout.Lines)
+	}
+}
+
+func TestFieldWithoutPathIsSkipped(t *testing.T) {
+	c := parseConfig("[field.broken]\nsymbol = \"x\"\n", "test")
+	if _, ok := c.Fields["broken"]; ok {
+		t.Error("field section without a path should be dropped")
+	}
+}
+
+func TestFieldReferencedWithoutSectionIsSkipped(t *testing.T) {
+	c := parseConfig("[layout]\nline1 = [\"model\", \"field.ghost\"]\n", "test")
+	want := [][]string{{"model"}}
+	if !reflect.DeepEqual(c.Layout.Lines, want) {
+		t.Errorf("lines = %v, want %v", c.Layout.Lines, want)
+	}
+}
+
+func TestUnknownFieldFormatFallsBackToRaw(t *testing.T) {
+	raw := `
+[field.x]
+path = "cost.total_cost_usd"
+format = "bogus"
+`
+	c := parseConfig(raw, "test")
+	if c.Fields["x"].Format != "" {
+		t.Errorf("unknown format should reset to raw, got %q", c.Fields["x"].Format)
+	}
+}
+
 func TestUnknownBarStyleFallsBackToBlocks(t *testing.T) {
 	c := parseConfig("[context]\nbar = \"lasers\"\n", "test")
 	if c.Context.Bar != BarBlocks {

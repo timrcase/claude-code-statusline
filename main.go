@@ -22,9 +22,11 @@ statusline on stdout. Claude Code normally invokes it for you via the
 statusLine setting, with no arguments.
 
 Usage:
-  claude-code-statusline            read a JSON payload from stdin, print the statusline
-  claude-code-statusline --version  print the version and exit
-  claude-code-statusline --help     show this help and exit
+  claude-code-statusline                 read a JSON payload from stdin, print the statusline
+  claude-code-statusline --version       print the version and exit
+  claude-code-statusline --help          show this help and exit
+  claude-code-statusline --print-payload pretty-print the last captured payload
+                                         (or piped JSON) to discover field paths
 
 Config: $XDG_CONFIG_HOME/claude-code-statusline/config.toml
     (falls back to ~/.config/claude-code-statusline/config.toml)
@@ -47,6 +49,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		case "--help", "-h", "help":
 			fmt.Fprint(stdout, usage)
 			return 0
+		case "--print-payload":
+			return printPayload(stdin, isPiped(stdin), stdout, stderr)
 		default:
 			fmt.Fprintf(stderr, "claude-code-statusline: unknown option %q\n\n", args[0])
 			fmt.Fprint(stderr, usage)
@@ -59,11 +63,28 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, "Claude")
 		return 0
 	}
+	capturePayload(input)
 	var payload Payload
 	if err := json.Unmarshal(input, &payload); err != nil {
 		payload = Payload{}
 	}
+	// Second, generic decode so [field.*] segments can resolve arbitrary paths.
+	json.Unmarshal(input, &payload.raw)
 	cfg := loadConfig()
 	fmt.Fprintln(stdout, render(&payload, &cfg))
 	return 0
+}
+
+// isPiped reports whether stdin has data to read rather than being an
+// interactive terminal. Non-file readers (tests, explicit pipes) always count.
+func isPiped(r io.Reader) bool {
+	f, ok := r.(*os.File)
+	if !ok {
+		return true
+	}
+	fi, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeCharDevice == 0
 }
