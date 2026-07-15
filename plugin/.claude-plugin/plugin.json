@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "claude-code-statusline",
   "displayName": "Claude Code Statusline",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Fast, config-driven statusline for Claude Code (Go, single static binary). Installs the native binary from GitHub releases and wires up the statusLine setting.",
   "author": {
     "name": "Tim Case",
