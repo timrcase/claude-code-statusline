@@ -12,6 +12,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -175,8 +176,13 @@ func DefaultConfig() Config {
 	}
 }
 
+// warnOut is where warnf writes. It's os.Stderr during a normal render (so
+// warnings stay out of the statusline on stdout) but --check-config swaps in a
+// buffer to surface them.
+var warnOut io.Writer = os.Stderr
+
 func warnf(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, "claude-code-statusline: "+format+"\n", args...)
+	fmt.Fprintf(warnOut, "claude-code-statusline: "+format+"\n", args...)
 }
 
 func loadConfig() Config {

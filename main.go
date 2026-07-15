@@ -27,6 +27,8 @@ Usage:
   claude-code-statusline --help          show this help and exit
   claude-code-statusline --print-payload pretty-print the last captured payload
                                          (or piped JSON) to discover field paths
+  claude-code-statusline --check-config  report the resolved config path, parse
+                                         warnings, and the effective layout
 
 Config: $XDG_CONFIG_HOME/claude-code-statusline/config.toml
     (falls back to ~/.config/claude-code-statusline/config.toml)
@@ -51,6 +53,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			return 0
 		case "--print-payload":
 			return printPayload(stdin, isPiped(stdin), stdout, stderr)
+		case "--check-config":
+			return checkConfig(stdout)
 		default:
 			fmt.Fprintf(stderr, "claude-code-statusline: unknown option %q\n\n", args[0])
 			fmt.Fprint(stderr, usage)

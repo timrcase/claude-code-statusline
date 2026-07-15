@@ -41,6 +41,20 @@ func TestRunHelp(t *testing.T) {
 		if !strings.Contains(out.String(), "--print-payload") {
 			t.Fatalf("%s: help should mention --print-payload", arg)
 		}
+		if !strings.Contains(out.String(), "--check-config") {
+			t.Fatalf("%s: help should mention --check-config", arg)
+		}
+	}
+}
+
+func TestRunCheckConfig(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir()) // no file -> defaults, no warnings
+	var out, errb bytes.Buffer
+	if code := run([]string{"--check-config"}, failReader{t}, &out, &errb); code != 0 {
+		t.Fatalf("exit %d, want 0", code)
+	}
+	if !strings.Contains(out.String(), "config:") || !strings.Contains(out.String(), "layout") {
+		t.Fatalf("unexpected check-config output: %q", out.String())
 	}
 }
 

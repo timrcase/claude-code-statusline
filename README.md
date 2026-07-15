@@ -237,6 +237,35 @@ stdout stays valid JSON (the capture note goes to stderr), so you can pipe it to
 `jq`. This is also the quickest way to see why a segment is blank on your setup —
 e.g. Claude Enterprise omits `rate_limits`.
 
+## Checking your config
+
+Config parse warnings (`unknown segment`, `no [field.x] section`, `bad config …
+using defaults`) are written to stderr during a render — which Claude Code
+discards, so a mistyped segment or a config that silently fell back to defaults
+is invisible. To see them:
+
+```sh
+claude-code-statusline --check-config
+```
+
+It reports the resolved config path (and whether it loaded or fell back to
+defaults), every parse warning, the **effective** layout after normalization, and
+the declared field/custom sections — then exits non-zero if there were warnings,
+so it works as a lint. For example, a layout referencing a non-existent `cost`
+segment shows:
+
+```
+config: ~/.config/claude-code-statusline/config.toml (loaded)
+
+warnings (1):
+  - unknown segment "cost" in layout of …/config.toml; skipping
+
+layout (separator " | "):
+  line1: model, directory, context, effort
+
+field sections:  rl5h
+```
+
 ## Behavior on odd input
 
 - Empty stdin → prints `Claude`, exits 0
